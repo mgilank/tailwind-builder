@@ -121,14 +121,16 @@ export default function Inspector({ state, setState }: Props) {
           </div>
 
           <div className="space-y-4 mt-3">
+            {/* Text color group side-by-side */}
             <div>
-              <ColorPicker
-                mode="text"
-                classes={node.classes}
-                onApply={(newClasses) => setState((s) => updateSelected(s, (n) => { n.classes = newClasses; }))}
-              />
-              <div className="mt-2">
-                <label className="block text-xs text-gray-600 mb-1">General Text Color</label>
+              <label className="block text-xs text-gray-600 mb-1">Text Color</label>
+              <div className="flex items-start gap-3">
+                <ColorPicker
+                  hideLabel
+                  mode="text"
+                  classes={node.classes}
+                  onApply={(newClasses) => setState((s) => updateSelected(s, (n) => { n.classes = newClasses; }))}
+                />
                 <div className="flex items-center gap-2">
                   <input
                     id="text-general-colorpicker"
@@ -138,22 +140,25 @@ export default function Inspector({ state, setState }: Props) {
                     onChange={(e) => setState((s) => updateSelected(s, (n) => { n.classes = applyTextColorArbitrary(n.classes, e.target.value); }))}
                     title="Pick any color"
                   />
-                  <button
+                  
+                </div>
+              </div>
+              <button
                     type="button"
                     className="px-2 py-1 text-xs border rounded"
                     onClick={() => setState((s) => updateSelected(s, (n) => { n.classes = applyTextColor(n.classes, undefined, undefined); }))}
                   >reset color</button>
-                </div>
-              </div>
             </div>
+            {/* Background color group side-by-side */}
             <div>
-              <ColorPicker
-                mode="bg"
-                classes={node.classes}
-                onApply={(newClasses) => setState((s) => updateSelected(s, (n) => { n.classes = newClasses; }))}
-              />
-              <div className="mt-2">
-                <label className="block text-xs text-gray-600 mb-1">General Background Color</label>
+              <label className="block text-xs text-gray-600 mb-1">Background</label>
+              <div className="flex items-start gap-3">
+                <ColorPicker
+                  hideLabel
+                  mode="bg"
+                  classes={node.classes}
+                  onApply={(newClasses) => setState((s) => updateSelected(s, (n) => { n.classes = newClasses; }))}
+                />
                 <div className="flex items-center gap-2">
                   <input
                     id="bg-general-colorpicker"
@@ -163,13 +168,14 @@ export default function Inspector({ state, setState }: Props) {
                     onChange={(e) => setState((s) => updateSelected(s, (n) => { n.classes = applyBgColorArbitrary(n.classes, e.target.value); }))}
                     title="Pick any color"
                   />
-                  <button
+                  
+                </div>
+              </div>
+              <button
                     type="button"
                     className="px-2 py-1 text-xs border rounded"
                     onClick={() => setState((s) => updateSelected(s, (n) => { n.classes = applyBgColor(n.classes, undefined, undefined); }))}
                   >reset color</button>
-                </div>
-              </div>
             </div>
           </div>
         </div>

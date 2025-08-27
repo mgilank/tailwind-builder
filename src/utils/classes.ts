@@ -50,8 +50,7 @@ function colorPattern(prefix: 'text' | 'bg'): RegExp[] {
   // Matches: text-blue-600, text-white, text-black
   const withShade = new RegExp(`^${prefix}-(?:${names})-(?:[1-9]00|50)$`);
   const simple = new RegExp(`^${prefix}-(?:white|black)$`);
-  const arbitrary = new RegExp(`^${prefix}-\\[.+\\]$`);
-  return [withShade, simple, arbitrary];
+  return [withShade, simple];
 }
 
 export const DEFAULT_TEXT_SHADE = '600';
@@ -67,7 +66,7 @@ export function applyTextColor(classes: string, color?: string, shade?: string):
     // default shade when a color is chosen without a shade
     add = `text-${color}-${DEFAULT_TEXT_SHADE}`;
   }
-  return replaceTokens(classes, colorPattern('text'), add);
+  return replaceTokens(classes, [...colorPattern('text'), arbitraryColorPattern('text')], add);
 }
 
 export function currentTextColor(classes: string): { color: string | '', shade: string | '' } {
@@ -87,7 +86,7 @@ export function applyBgColor(classes: string, color?: string, shade?: string): s
     // default shade when a color is chosen without a shade
     add = `bg-${color}-${DEFAULT_BG_SHADE}`;
   }
-  return replaceTokens(classes, colorPattern('bg'), add);
+  return replaceTokens(classes, [...colorPattern('bg'), arbitraryColorPattern('bg')], add);
 }
 
 export function currentBgColor(classes: string): { color: string | '', shade: string | '' } {
@@ -102,31 +101,33 @@ export const SHADE_VALUES_UI = ['','50','100','200','300','400','500','600','700
 
 export const SPACING_VALUES_UI = ['','0','0.5','1','1.5','2','2.5','3','3.5','4','5','6','8','10','12','16','20','24'];
 
-// Arbitrary color helpers (e.g., text-[#ff00aa])
-function arbitraryPattern(prefix: 'text' | 'bg'): RegExp {
-  return new RegExp(`^${prefix}-\\[(.+)\\]$`);
+// Arbitrary color helpers (only match color-like values, not sizes like text-[32px])
+function arbitraryColorPattern(prefix: 'text' | 'bg'): RegExp {
+  // Supported: hex (#rgb, #rrggbb, #rrggbbaa), rgb()/rgba(), hsl()/hsla()
+  const inner = '(?:#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})|rgba?\\([^\\]]+\\)|hsla?\\([^\\]]+\\))';
+  return new RegExp(`^${prefix}-\\[(${inner})\\]$`);
 }
 
 export function applyTextColorArbitrary(classes: string, hex?: string): string {
   const add = hex && hex.length ? `text-[${hex}]` : undefined;
-  return replaceTokens(classes, colorPattern('text'), add);
+  return replaceTokens(classes, [...colorPattern('text'), arbitraryColorPattern('text')], add);
 }
 
 export function applyBgColorArbitrary(classes: string, hex?: string): string {
   const add = hex && hex.length ? `bg-[${hex}]` : undefined;
-  return replaceTokens(classes, colorPattern('bg'), add);
+  return replaceTokens(classes, [...colorPattern('bg'), arbitraryColorPattern('bg')], add);
 }
 
 export function currentTextArbitrary(classes: string): string | '' {
-  const t = tokenize(classes).find((t) => arbitraryPattern('text').test(t));
+  const t = tokenize(classes).find((t) => arbitraryColorPattern('text').test(t));
   if (!t) return '';
-  const m = t.match(arbitraryPattern('text'));
+  const m = t.match(arbitraryColorPattern('text'));
   return (m?.[1] as string) || '';
 }
 
 export function currentBgArbitrary(classes: string): string | '' {
-  const t = tokenize(classes).find((t) => arbitraryPattern('bg').test(t));
+  const t = tokenize(classes).find((t) => arbitraryColorPattern('bg').test(t));
   if (!t) return '';
-  const m = t.match(arbitraryPattern('bg'));
+  const m = t.match(arbitraryColorPattern('bg'));
   return (m?.[1] as string) || '';
 }
