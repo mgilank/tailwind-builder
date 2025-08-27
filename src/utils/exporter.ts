@@ -14,12 +14,9 @@ export function renderNode(n: TreeNode): string {
       const target = n.props.target ? ` target="${escapeAttribute(n.props.target)}"` : '';
       return `<a href="${escapeAttribute(href)}"${target}${cls}>${escapeHtml(n.props.text ?? 'Link')}</a>`;
     }
-    case 'h1':
-    case 'h2':
-    case 'h3':
-    case 'h4':
-    case 'h5': {
-      const tag = n.type;
+    case 'heading': {
+      const level = n.props.level ?? 1;
+      const tag = `h${level}`;
       return `<${tag}${cls}>${escapeHtml(n.props.text ?? tag.toUpperCase())}</${tag}>`;
     }
     default: {
@@ -37,4 +34,3 @@ export function renderHtml(root: TreeNode): string {
 export function escapeAttribute(v: string): string {
   return v.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
 }
-

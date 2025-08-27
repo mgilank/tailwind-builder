@@ -2,13 +2,21 @@ import React, { useEffect, useMemo, useState } from 'react';
 import Palette from './components/Palette';
 import Canvas from './components/Canvas';
 import Inspector from './components/Inspector';
-import { BuilderState, createEmptyState, redo, undo } from './state/model';
+import { BuilderState, createEmptyState, ensureDivMargin, convertLegacyHeadings, redo, undo } from './state/model';
 import { renderHtml } from './utils/exporter';
 import { minifyHtml } from './utils/minify';
 
 export default function App() {
   const [state, setStateRaw] = useState<BuilderState>(() => createEmptyState());
   const [minify, setMinify] = useState(true);
+
+  // one-time migration: ensure existing divs have default margin
+  useEffect(() => {
+    setState((s) => {
+      ensureDivMargin(s.root);
+      convertLegacyHeadings(s.root);
+    });
+  }, []);
 
   // undo/redo keyboard
   useEffect(() => {
@@ -74,4 +82,3 @@ export default function App() {
     </div>
   );
 }
-
