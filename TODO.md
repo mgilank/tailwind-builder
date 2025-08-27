@@ -35,6 +35,8 @@ Derived from specs.md: drag-and-drop builder that outputs HTML + Tailwind CSS wi
 ## Properties & Styling
 - [x] Properties panel: edit text content; change heading level; set link `href`/`target`.
 - [x] Style selectors for margin, padding, text color, background color (Tailwind classes applied automatically).
+- [x] Tailwind color pickers: swatch grids for text and background (families + 50–900 shades); dedicated white/black row; preview squares.
+- [x] General color pickers (native): arbitrary hex for text and background; inline styles applied in Canvas for immediate preview; IDs for automation.
 - [ ] Attributes: `id`, `title`, `aria-*` basics.
 - [ ] Tailwind class editor with suggestions and validation (responsive + state variants).
 - [ ] Common actions: wrap with container, add child, convert element type (where safe).
@@ -49,6 +51,7 @@ Derived from specs.md: drag-and-drop builder that outputs HTML + Tailwind CSS wi
 - [x] Live preview that reflects Tailwind classes (JIT enabled).
 - [ ] Device presets/breakpoints preview (sm/md/lg/xl) and dark mode toggle.
 - [x] Ensure Tailwind `content` globs include dynamic class sources.
+- [x] Safelist color and spacing classes used by pickers.
 
 ## State, Undo/Redo, Persistence
 - [x] Central state model for nodes, props, and classes.
@@ -74,6 +77,25 @@ Derived from specs.md: drag-and-drop builder that outputs HTML + Tailwind CSS wi
 ## Documentation
 - [x] Update `README` with setup, commands, and export instructions.
 - [ ] Document supported components and known limitations.
+
+## Recent UX Adjustments
+- [x] Hide drag/close handles by default; reveal on hover or when selected.
+- [x] Default alignment left for all components; center labels only.
+- [x] Remove 100% width for non-section components; `div` defaults to `inline-block min-w-[80px]`.
+- [x] Heading default size 32px.
+- [x] Section defaults: `flex flex-col items-start` with paddings `pt-[75px] pb-[75px] px-5`.
+- [x] Canvas root: remove dashed border and padding; use solid border only.
+- [x] Center placeholder labels within components using absolute overlay.
+- [x] Tailwind color picker UI: unify look for text/background; remove duplicated white/black groups; add IDs `text-tailwind-colorpicker` and `bg-tailwind-colorpicker`.
+- [x] Move general color pickers outside Tailwind pickers with IDs `text-general-colorpicker` and `bg-general-colorpicker`.
+- [x] Consolidate clear actions into a single "Clear color" per section.
+
+## Next Up
+- [ ] Palette search/filter and quick-add.
+- [ ] Outliner/tree view with reorder and select.
+- [ ] Autosave to localStorage; import/export project JSON.
+- [ ] Lint/format scripts and CI.
+- [ ] Validation for common issues (e.g., empty button, missing href).
 
 ## Stretch Goals
 - [ ] Templates/presets for common sections (hero, CTA, footer).

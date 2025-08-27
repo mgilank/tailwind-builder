@@ -76,7 +76,7 @@ export const hasAnyMarginClass = (classes: string): boolean => {
 
 export const ensureDivMargin = (n: TreeNode) => {
   if (n.type === 'div' && !hasAnyMarginClass(n.classes)) {
-    n.classes = `${n.classes} m-8`.trim();
+    n.classes = `${n.classes}`.trim();
   }
   for (const c of n.children) ensureDivMargin(c);
 };
@@ -96,7 +96,16 @@ export const addNode = (s: BuilderState, type: NodeType) => {
   const node: TreeNode = {
     id: genId(),
     type,
-    classes: type === 'section' ? 'py-12' : type === 'button' ? 'px-4 py-2 bg-blue-600 text-white rounded' : type === 'div' ? 'w-full m-8' : '',
+    classes:
+      type === 'section'
+        ? 'pt-[75px] pb-[75px] px-5 flex flex-col items-start'
+        : type === 'button'
+        ? 'px-4 py-2 bg-blue-600 text-white rounded'
+        : type === 'div'
+        ? 'inline-block min-w-[80px]'
+        : type === 'heading'
+        ? 'inline-block text-[32px]'
+        : '',
     props: defaultProps(type),
     children: [],
   };
@@ -113,12 +122,21 @@ export const addNodeToParent = (s: BuilderState, parentId: string, type: NodeTyp
   const parent = findNode(s.root, parentId);
   if (!parent || !canHaveChildren(parent.type)) return;
   // Do not allow inserting a section into section or div
-  if (type === 'section') return;
+  if ((type as NodeType) === 'section') return;
   pushHistory(s);
   const node: TreeNode = {
     id: genId(),
     type,
-    classes: type === 'section' ? 'py-12' : type === 'button' ? 'px-4 py-2 bg-blue-600 text-white rounded' : type === 'div' ? 'w-full m-8' : '',
+    classes:
+      (type as NodeType) === 'section'
+        ? 'pt-[75px] pb-[75px] px-5 flex flex-col items-start'
+        : (type as NodeType) === 'button'
+        ? 'px-4 py-2 bg-blue-600 text-white rounded'
+        : (type as NodeType) === 'div'
+        ? 'inline-block min-w-[80px]'
+        : (type as NodeType) === 'heading'
+        ? 'inline-block text-[32px]'
+        : '',
     props: defaultProps(type),
     children: [],
   };
@@ -204,6 +222,24 @@ export const findNode = (root: TreeNode, id?: string): TreeNode | undefined => {
   for (const c of root.children) {
     const f = findNode(c, id);
     if (f) return f;
+  }
+};
+
+export const removeNode = (s: BuilderState, nodeId: string) => {
+  // Don't allow removing the root node
+  if (nodeId === 'root') return;
+  
+  const info = findParentAndIndex(s.root, nodeId);
+  if (!info || !info.parent) return;
+  
+  pushHistory(s);
+  
+  // Remove the node from its parent's children
+  info.parent.children.splice(info.index, 1);
+  
+  // If the removed node was selected, clear selection or select parent
+  if (s.selectedId === nodeId) {
+    s.selectedId = info.parent.id === 'root' ? undefined : info.parent.id;
   }
 };
 

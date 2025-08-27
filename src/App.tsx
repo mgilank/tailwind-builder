@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import Palette from './components/Palette';
 import Canvas from './components/Canvas';
 import Inspector from './components/Inspector';
-import { BuilderState, createEmptyState, ensureDivMargin, convertLegacyHeadings, redo, undo } from './state/model';
+import { BuilderState, createEmptyState, convertLegacyHeadings, redo, undo, removeNode } from './state/model';
 import { renderHtml } from './utils/exporter';
 import { minifyHtml } from './utils/minify';
 
@@ -10,26 +10,46 @@ export default function App() {
   const [state, setStateRaw] = useState<BuilderState>(() => createEmptyState());
   const [minify, setMinify] = useState(true);
 
-  // one-time migration: ensure existing divs have default margin
   useEffect(() => {
     setState((s) => {
-      ensureDivMargin(s.root);
       convertLegacyHeadings(s.root);
     });
   }, []);
 
-  // undo/redo keyboard
+  // undo/redo and delete keyboard shortcuts
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
+      // Ignore shortcuts when typing in an editable field
+      const target = e.target as HTMLElement | null;
+      const active = (document.activeElement as HTMLElement | null) || null;
+      const isEditable = (el: HTMLElement | null) => !!el && (
+        el.tagName === 'INPUT' ||
+        el.tagName === 'TEXTAREA' ||
+        el.tagName === 'SELECT' ||
+        el.isContentEditable ||
+        !!el.closest('input, textarea, select, [contenteditable="true"], [contenteditable=""]')
+      );
+
+      if (isEditable(target) || isEditable(active)) {
+        return; // let the element handle Backspace/Delete/Cmd+Z, etc.
+      }
+
       const mod = e.ctrlKey || e.metaKey;
       if (mod && e.key.toLowerCase() === 'z') {
         e.preventDefault();
         setState((s) => e.shiftKey ? redo(s) : undo(s));
       }
+      // Delete key to remove selected component
+      if (e.key === 'Delete' || e.key === 'Backspace') {
+        if (state.selectedId && state.selectedId !== 'root') {
+          e.preventDefault();
+          setState((s) => removeNode(s, state.selectedId!));
+        }
+      }
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, []);
+  }, [state.selectedId]);
 
   const setState = (updater: (s: BuilderState) => void) => {
     setStateRaw((prev) => {

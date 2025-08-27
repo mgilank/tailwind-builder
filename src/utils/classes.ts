@@ -50,7 +50,8 @@ function colorPattern(prefix: 'text' | 'bg'): RegExp[] {
   // Matches: text-blue-600, text-white, text-black
   const withShade = new RegExp(`^${prefix}-(?:${names})-(?:[1-9]00|50)$`);
   const simple = new RegExp(`^${prefix}-(?:white|black)$`);
-  return [withShade, simple];
+  const arbitrary = new RegExp(`^${prefix}-\\[.+\\]$`);
+  return [withShade, simple, arbitrary];
 }
 
 export const DEFAULT_TEXT_SHADE = '600';
@@ -100,3 +101,32 @@ export const COLOR_NAMES_UI = ['','slate','gray','zinc','neutral','stone','red',
 export const SHADE_VALUES_UI = ['','50','100','200','300','400','500','600','700','800','900'];
 
 export const SPACING_VALUES_UI = ['','0','0.5','1','1.5','2','2.5','3','3.5','4','5','6','8','10','12','16','20','24'];
+
+// Arbitrary color helpers (e.g., text-[#ff00aa])
+function arbitraryPattern(prefix: 'text' | 'bg'): RegExp {
+  return new RegExp(`^${prefix}-\\[(.+)\\]$`);
+}
+
+export function applyTextColorArbitrary(classes: string, hex?: string): string {
+  const add = hex && hex.length ? `text-[${hex}]` : undefined;
+  return replaceTokens(classes, colorPattern('text'), add);
+}
+
+export function applyBgColorArbitrary(classes: string, hex?: string): string {
+  const add = hex && hex.length ? `bg-[${hex}]` : undefined;
+  return replaceTokens(classes, colorPattern('bg'), add);
+}
+
+export function currentTextArbitrary(classes: string): string | '' {
+  const t = tokenize(classes).find((t) => arbitraryPattern('text').test(t));
+  if (!t) return '';
+  const m = t.match(arbitraryPattern('text'));
+  return (m?.[1] as string) || '';
+}
+
+export function currentBgArbitrary(classes: string): string | '' {
+  const t = tokenize(classes).find((t) => arbitraryPattern('bg').test(t));
+  if (!t) return '';
+  const m = t.match(arbitraryPattern('bg'));
+  return (m?.[1] as string) || '';
+}

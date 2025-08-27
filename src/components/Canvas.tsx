@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { addNode, addNodeToParent, BuilderState, canHaveChildren, findNode, findParentAndIndex, moveNodeAsChild, moveNodeRelative } from '../state/model';
+import { addNode, addNodeToParent, BuilderState, canHaveChildren, findNode, findParentAndIndex, moveNodeAsChild, moveNodeRelative, removeNode } from '../state/model';
+import { currentBgArbitrary, currentTextArbitrary } from '../utils/classes';
 
 interface Props {
   state: BuilderState;
@@ -49,12 +50,20 @@ export default function Canvas({ state, setState }: Props) {
     const n = findNode(state.root, id)!;
     const selected = state.selectedId === id;
     const base = selected ? 'ring-2 ring-blue-500' : 'ring-1 ring-transparent';
-    // Builder-only visual helpers: subtle border, rounded, centered placeholder label
-    const builderVisual = 'relative border border-gray-200 rounded-sm hover:border-gray-300 min-h-[48px] flex items-center justify-center';
+    // Builder-only visual helpers: subtle border, rounded
+    // Add `group` to enable hover-reveal controls on children
+    // Remove flex centering so content aligns left by default
+    const builderVisual = 'relative group border border-gray-200 rounded-sm hover:border-gray-300 min-h-[48px] text-left';
     const cls = `${n.classes} ${builderVisual} ${base}`.trim();
+    const arbText = currentTextArbitrary(n.classes);
+    const arbBg = currentBgArbitrary(n.classes);
+    const inlineStyle: React.CSSProperties = {};
+    if (arbText) inlineStyle.color = arbText;
+    if (arbBg) inlineStyle.backgroundColor = arbBg;
     const common = {
       'data-id': id,
       className: cls,
+      style: inlineStyle,
       draggable: true,
       onDragStart: (e: React.DragEvent) => {
         e.dataTransfer.setData('application/x-move-node', id);
@@ -193,38 +202,61 @@ export default function Canvas({ state, setState }: Props) {
         setDropHint((cur) => (cur && cur.id === id ? null : cur));
       },
     };
+    const handleDelete = (e: React.MouseEvent) => {
+      e.stopPropagation();
+      setState((s) => removeNode(s, id));
+    };
+
     const renderHandle = (
-      <span
-        className="absolute top-1 right-1 w-5 h-5 flex items-center justify-center text-gray-400 hover:text-gray-600 cursor-grab bg-white/70 rounded"
-        draggable
-        onMouseDown={(e) => { e.stopPropagation(); select(id); }}
-        onDragStart={(e) => {
-          e.stopPropagation();
-          e.dataTransfer.setData('application/x-move-node', id);
-          e.dataTransfer.setData('text/plain', id);
-          e.dataTransfer.effectAllowed = 'move';
-          setDragMeta({ mode: 'move', id, type: n.type });
-        }}
-        onDragEnd={() => { setDropHint(null); setDragMeta(null); }}
-        title="Drag to move"
+      <div
+        className={
+          `absolute top-1 right-1 flex gap-1 transition-opacity ` +
+          (selected
+            ? 'opacity-100 pointer-events-auto'
+            : 'opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto')
+        }
       >
-        ⠿
-      </span>
+        <span
+          className="w-5 h-5 flex items-center justify-center text-gray-400 hover:text-gray-600 cursor-grab bg-white/70 rounded"
+          draggable
+          onMouseDown={(e) => { e.stopPropagation(); select(id); }}
+          onDragStart={(e) => {
+            e.stopPropagation();
+            e.dataTransfer.setData('application/x-move-node', id);
+            e.dataTransfer.setData('text/plain', id);
+            e.dataTransfer.effectAllowed = 'move';
+            setDragMeta({ mode: 'move', id, type: n.type });
+          }}
+          onDragEnd={() => { setDropHint(null); setDragMeta(null); }}
+          title="Drag to move"
+        >
+          ⠿
+        </span>
+        {id !== 'root' && (
+          <button
+            className="w-5 h-5 flex items-center justify-center text-gray-400 hover:text-red-600 bg-white/70 rounded"
+            onClick={handleDelete}
+            title="Delete component"
+          >
+            ×
+          </button>
+        )}
+      </div>
     );
     switch (n.type) {
       case 'text':
         return <span {...common} {...droppable}>
-          <span className="pointer-events-none text-[10px] uppercase tracking-wide text-gray-500">{n.type}</span>
+          <span className="pointer-events-none absolute inset-0 flex items-center justify-center text-[10px] uppercase tracking-wide text-gray-500">{n.type}</span>
           {renderHandle}
         </span>;
       case 'button':
         return <button {...common} {...droppable}>
-          <span className="pointer-events-none text-[10px] uppercase tracking-wide text-gray-500">{n.type}</span>
+          <span className="pointer-events-none absolute inset-0 flex items-center justify-center text-[10px] uppercase tracking-wide text-gray-500">{n.type}</span>
           {renderHandle}
         </button>;
       case 'link':
         return <a href={n.props.href ?? '#'} target={n.props.target} {...common} {...droppable}>
-          <span className="pointer-events-none text-[10px] uppercase tracking-wide text-gray-500">{n.type}</span>
+          <span className="pointer-events-none absolute inset-0 flex items-center justify-center text-[10px] uppercase tracking-wide text-gray-500">{n.type}</span>
           {renderHandle}
         </a>;
       case 'heading': {
@@ -239,7 +271,7 @@ export default function Canvas({ state, setState }: Props) {
         const Tag = n.type as any;
         return <Tag {...common} {...droppable}>
           {n.children.length === 0 ? (
-            <span className="pointer-events-none text-[10px] uppercase tracking-wide text-gray-400">{n.type}</span>
+            <span className="pointer-events-none absolute inset-0 flex items-center justify-center text-[10px] uppercase tracking-wide text-gray-400">{n.type}</span>
           ) : (
             n.children.map((c) => (
               <React.Fragment key={c.id}>{render(c.id)}</React.Fragment>
@@ -266,7 +298,7 @@ export default function Canvas({ state, setState }: Props) {
       <div className="text-xs text-gray-500 mb-2">Drop components here</div>
       <div
         data-testid="canvas-root"
-        className="relative min-h-[60vh] bg-white p-4 border border-dashed border-gray-300 rounded"
+        className="relative min-h-[60vh] bg-white border border-gray-300 rounded"
         onDragLeave={clearRootHintOnLeave}
       >
         {state.root.children.length === 0 ? (

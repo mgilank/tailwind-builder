@@ -1,18 +1,19 @@
 import React from 'react';
 import { BuilderState, findNode, updateSelected } from '../state/model';
 import {
-  applyBgColor,
   applyMarginClass,
   applyPaddingClass,
-  applyTextColor,
-  COLOR_NAMES_UI,
-  currentBgColor,
+  SPACING_VALUES_UI,
   currentMarginValue,
   currentPaddingValue,
-  currentTextColor,
-  SHADE_VALUES_UI,
-  SPACING_VALUES_UI,
+  applyTextColorArbitrary,
+  applyBgColorArbitrary,
+  currentTextArbitrary,
+  currentBgArbitrary,
+  applyTextColor,
+  applyBgColor,
 } from '../utils/classes';
+import ColorPicker from './ColorPicker';
 
 interface Props {
   state: BuilderState;
@@ -119,55 +120,55 @@ export default function Inspector({ state, setState }: Props) {
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-2 mt-2">
+          <div className="space-y-4 mt-3">
             <div>
-              <label className="block text-xs text-gray-600 mb-1">Text Color</label>
-              <div className="flex gap-1">
-                <select
-                  className="flex-1 border rounded px-2 py-1 text-sm"
-                  value={currentTextColor(node.classes).color}
-                  onChange={(e) => setState((s) => updateSelected(s, (n) => {
-                    const cur = currentTextColor(n.classes);
-                    n.classes = applyTextColor(n.classes, e.target.value || undefined, cur.shade || undefined);
-                  }))}
-                >
-                  {COLOR_NAMES_UI.map((c) => <option key={c} value={c}>{c === '' ? '-' : c}</option>)}
-                </select>
-                <select
-                  className="w-24 border rounded px-2 py-1 text-sm"
-                  value={currentTextColor(node.classes).shade}
-                  onChange={(e) => setState((s) => updateSelected(s, (n) => {
-                    const cur = currentTextColor(n.classes);
-                    n.classes = applyTextColor(n.classes, cur.color || undefined, e.target.value || undefined);
-                  }))}
-                >
-                  {SHADE_VALUES_UI.map((sVal) => <option key={sVal} value={sVal}>{sVal === '' ? '-' : sVal}</option>)}
-                </select>
+              <ColorPicker
+                mode="text"
+                classes={node.classes}
+                onApply={(newClasses) => setState((s) => updateSelected(s, (n) => { n.classes = newClasses; }))}
+              />
+              <div className="mt-2">
+                <label className="block text-xs text-gray-600 mb-1">General Text Color</label>
+                <div className="flex items-center gap-2">
+                  <input
+                    id="text-general-colorpicker"
+                    type="color"
+                    className="h-8 w-10 p-0 border rounded cursor-pointer"
+                    value={(currentTextArbitrary(node.classes) || '#000000').replace(/^(?!#)/, '#')}
+                    onChange={(e) => setState((s) => updateSelected(s, (n) => { n.classes = applyTextColorArbitrary(n.classes, e.target.value); }))}
+                    title="Pick any color"
+                  />
+                  <button
+                    type="button"
+                    className="px-2 py-1 text-xs border rounded"
+                    onClick={() => setState((s) => updateSelected(s, (n) => { n.classes = applyTextColor(n.classes, undefined, undefined); }))}
+                  >reset color</button>
+                </div>
               </div>
             </div>
             <div>
-              <label className="block text-xs text-gray-600 mb-1">Background</label>
-              <div className="flex gap-1">
-                <select
-                  className="flex-1 border rounded px-2 py-1 text-sm"
-                  value={currentBgColor(node.classes).color}
-                  onChange={(e) => setState((s) => updateSelected(s, (n) => {
-                    const cur = currentBgColor(n.classes);
-                    n.classes = applyBgColor(n.classes, e.target.value || undefined, cur.shade || undefined);
-                  }))}
-                >
-                  {COLOR_NAMES_UI.map((c) => <option key={c} value={c}>{c === '' ? '-' : c}</option>)}
-                </select>
-                <select
-                  className="w-24 border rounded px-2 py-1 text-sm"
-                  value={currentBgColor(node.classes).shade}
-                  onChange={(e) => setState((s) => updateSelected(s, (n) => {
-                    const cur = currentBgColor(n.classes);
-                    n.classes = applyBgColor(n.classes, cur.color || undefined, e.target.value || undefined);
-                  }))}
-                >
-                  {SHADE_VALUES_UI.map((sVal) => <option key={sVal} value={sVal}>{sVal === '' ? '-' : sVal}</option>)}
-                </select>
+              <ColorPicker
+                mode="bg"
+                classes={node.classes}
+                onApply={(newClasses) => setState((s) => updateSelected(s, (n) => { n.classes = newClasses; }))}
+              />
+              <div className="mt-2">
+                <label className="block text-xs text-gray-600 mb-1">General Background Color</label>
+                <div className="flex items-center gap-2">
+                  <input
+                    id="bg-general-colorpicker"
+                    type="color"
+                    className="h-8 w-10 p-0 border rounded cursor-pointer"
+                    value={(currentBgArbitrary(node.classes) || '#000000').replace(/^(?!#)/, '#')}
+                    onChange={(e) => setState((s) => updateSelected(s, (n) => { n.classes = applyBgColorArbitrary(n.classes, e.target.value); }))}
+                    title="Pick any color"
+                  />
+                  <button
+                    type="button"
+                    className="px-2 py-1 text-xs border rounded"
+                    onClick={() => setState((s) => updateSelected(s, (n) => { n.classes = applyBgColor(n.classes, undefined, undefined); }))}
+                  >reset color</button>
+                </div>
               </div>
             </div>
           </div>
