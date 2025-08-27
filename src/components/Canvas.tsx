@@ -264,7 +264,11 @@ export default function Canvas({ state, setState }: Props) {
   return (
     <div className="panel p-4 h-full overflow-auto" onDrop={onDrop} onDragOver={onDragOver} onClick={() => select('root')}>
       <div className="text-xs text-gray-500 mb-2">Drop components here</div>
-      <div className="relative min-h-[60vh] bg-white p-4 border border-dashed border-gray-300 rounded" onDragLeave={clearRootHintOnLeave}>
+      <div
+        data-testid="canvas-root"
+        className="relative min-h-[60vh] bg-white p-4 border border-dashed border-gray-300 rounded"
+        onDragLeave={clearRootHintOnLeave}
+      >
         {state.root.children.length === 0 ? (
           <div className="text-gray-400 text-sm">Empty canvas</div>
         ) : (

@@ -11,6 +11,7 @@ export default function Palette() {
         {ITEMS.map((t) => (
           <button
             key={t}
+            data-testid={`palette-item-${t}`}
             draggable
             onDragStart={(e) => {
               e.dataTransfer.setData('application/x-node-type', t);
