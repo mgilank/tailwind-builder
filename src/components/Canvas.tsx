@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { addNode, addNodeToParent, BuilderState, canHaveChildren, findNode, moveNodeAsChild, moveNodeRelative } from '../state/model';
+import { addNode, addNodeToParent, BuilderState, canHaveChildren, findNode, findParentAndIndex, moveNodeAsChild, moveNodeRelative } from '../state/model';
 
 interface Props {
   state: BuilderState;
@@ -8,6 +8,7 @@ interface Props {
 
 export default function Canvas({ state, setState }: Props) {
   const [dropHint, setDropHint] = useState<null | { id: string; kind: 'inside' | 'before' | 'after' }>(null);
+  const [dragMeta, setDragMeta] = useState<null | { mode: 'move' | 'add'; type?: string; id?: string }>(null);
   const onDrop: React.DragEventHandler<HTMLDivElement> = (e) => {
     e.preventDefault();
     const type = e.dataTransfer.getData('application/x-node-type');
@@ -15,6 +16,7 @@ export default function Canvas({ state, setState }: Props) {
     if (type) {
       setState((s) => addNode(s, type as any));
       setDropHint(null);
+      setDragMeta(null);
       return;
     }
     if (movingId) {
@@ -23,6 +25,7 @@ export default function Canvas({ state, setState }: Props) {
         setState((s) => moveNodeAsChild(s, movingId, 'root'));
       }
     }
+    setDragMeta(null);
   };
 
   const onDragOver: React.DragEventHandler<HTMLDivElement> = (e) => {
@@ -30,11 +33,13 @@ export default function Canvas({ state, setState }: Props) {
     if (types.includes('application/x-node-type')) {
       e.preventDefault();
       e.dataTransfer.dropEffect = 'copy';
+      setDropHint({ id: 'root', kind: 'inside' });
       return;
     }
     if (types.includes('text/plain') || types.includes('application/x-move-node')) {
       e.preventDefault();
       e.dataTransfer.dropEffect = 'move';
+      setDropHint({ id: 'root', kind: 'inside' });
     }
   };
 
@@ -56,11 +61,22 @@ export default function Canvas({ state, setState }: Props) {
         // Also set text/plain for better browser compatibility (e.g., Safari)
         e.dataTransfer.setData('text/plain', id);
         e.dataTransfer.effectAllowed = 'move';
+        setDragMeta({ mode: 'move', id, type: n.type });
       },
-      onDragEnd: () => setDropHint(null),
+      onDragEnd: () => { setDropHint(null); setDragMeta(null); },
       onClick: (e: React.MouseEvent) => { e.stopPropagation(); select(id); },
     } as any;
     const canDropHere = canHaveChildren(n.type);
+    const parentInfo = findParentAndIndex(state.root, id);
+    const parent = parentInfo?.parent;
+    const nearestContainerId = (() => {
+      let curParent = parent;
+      while (curParent && !canHaveChildren(curParent.type)) {
+        const up = findParentAndIndex(state.root, curParent.id)?.parent;
+        curParent = up;
+      }
+      return curParent && canHaveChildren(curParent.type) ? curParent.id : 'root';
+    })();
     const droppable: any = {
       onDragOver: (e: React.DragEvent) => {
         const types = e.dataTransfer.types;
@@ -71,14 +87,21 @@ export default function Canvas({ state, setState }: Props) {
           const t = e.dataTransfer.getData('application/x-node-type');
           if (canDropHere && t !== 'section') {
             setDropHint({ id, kind: 'inside' });
+            e.stopPropagation();
+          } else if (!canDropHere && t !== 'section') {
+            // Delegate to closest parent container for inside preview
+            setDropHint({ id: nearestContainerId, kind: 'inside' });
+            e.stopPropagation();
           } else if (n.type === 'section' && t === 'section') {
             const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
             const before = e.clientY < rect.top + rect.height / 2;
             setDropHint({ id, kind: before ? 'before' : 'after' });
+            e.stopPropagation();
           } else {
             const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
             const before = e.clientY < rect.top + rect.height / 2;
             setDropHint({ id, kind: before ? 'before' : 'after' });
+            e.stopPropagation();
           }
           return;
         }
@@ -86,16 +109,29 @@ export default function Canvas({ state, setState }: Props) {
         if (types.includes('text/plain') || types.includes('application/x-move-node')) {
           e.preventDefault();
           e.dataTransfer.dropEffect = 'move';
-          if (n.type === 'section') {
+          if (!canDropHere) {
+            // Show inside preview on nearest container parent
+            setDropHint({ id: nearestContainerId, kind: 'inside' });
+            e.stopPropagation();
+          } else if (n.type === 'section') {
+            // If moving a non-section over a section, preview inside the section
+            if (dragMeta && dragMeta.mode === 'move' && dragMeta.type !== 'section') {
+              setDropHint({ id, kind: 'inside' });
+              e.stopPropagation();
+              return;
+            }
             const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
             const before = e.clientY < rect.top + rect.height / 2;
             setDropHint({ id, kind: before ? 'before' : 'after' });
+            e.stopPropagation();
           } else if (canDropHere) {
             setDropHint({ id, kind: 'inside' });
+            e.stopPropagation();
           } else {
             const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
             const before = e.clientY < rect.top + rect.height / 2;
             setDropHint({ id, kind: before ? 'before' : 'after' });
+            e.stopPropagation();
           }
           return;
         }
@@ -106,7 +142,20 @@ export default function Canvas({ state, setState }: Props) {
         const type = e.dataTransfer.getData('application/x-node-type');
         const movingId = e.dataTransfer.getData('application/x-move-node') || e.dataTransfer.getData('text/plain');
         if (type) {
-          setState((s) => addNodeToParent(s, id, type as any));
+          if (canDropHere && type !== 'section') {
+            setState((s) => addNodeToParent(s, id, type as any));
+          } else if (!canDropHere && type !== 'section') {
+            // Drop into the closest container parent
+            setState((s) => addNodeToParent(s, nearestContainerId, type as any));
+          } else if (n.type === 'section' && type === 'section') {
+            const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+            const before = e.clientY < rect.top + rect.height / 2;
+            // Insert section before/after section
+            const currentId = id;
+            if (movingId) {
+              // no-op: handled by moving branch
+            }
+          }
           setDropHint(null);
           return;
         }
@@ -122,6 +171,12 @@ export default function Canvas({ state, setState }: Props) {
           }
           if (canDropHere && moving.type !== 'section') {
             setState((s) => moveNodeAsChild(s, movingId, id));
+            setDropHint(null);
+            return;
+          }
+          if (!canDropHere && moving.type !== 'section') {
+            // Move as child into the closest container parent
+            setState((s) => moveNodeAsChild(s, movingId, nearestContainerId));
             setDropHint(null);
             return;
           }
@@ -148,8 +203,9 @@ export default function Canvas({ state, setState }: Props) {
           e.dataTransfer.setData('application/x-move-node', id);
           e.dataTransfer.setData('text/plain', id);
           e.dataTransfer.effectAllowed = 'move';
+          setDragMeta({ mode: 'move', id, type: n.type });
         }}
-        onDragEnd={() => setDropHint(null)}
+        onDragEnd={() => { setDropHint(null); setDragMeta(null); }}
         title="Drag to move"
       >
         ⠿
@@ -175,7 +231,7 @@ export default function Canvas({ state, setState }: Props) {
         const level = n.props.level ?? 1;
         const Tag = (`h${level}`) as any;
         return <Tag {...common} {...droppable}>
-          <span className="pointer-events-none text-[10px] uppercase tracking-wide text-gray-500">Heading</span>
+          {n.props.text ?? `H${level}`}
           {renderHandle}
         </Tag>;
       }
@@ -201,14 +257,21 @@ export default function Canvas({ state, setState }: Props) {
     }
   };
 
+  const clearRootHintOnLeave: React.DragEventHandler<HTMLDivElement> = () => {
+    setDropHint((cur) => (cur && cur.id === 'root' ? null : cur));
+  };
+
   return (
     <div className="panel p-4 h-full overflow-auto" onDrop={onDrop} onDragOver={onDragOver} onClick={() => select('root')}>
       <div className="text-xs text-gray-500 mb-2">Drop components here</div>
-      <div className="min-h-[60vh] bg-white p-4 border border-dashed border-gray-300 rounded">
+      <div className="relative min-h-[60vh] bg-white p-4 border border-dashed border-gray-300 rounded" onDragLeave={clearRootHintOnLeave}>
         {state.root.children.length === 0 ? (
           <div className="text-gray-400 text-sm">Empty canvas</div>
         ) : (
           state.root.children.map((c) => <React.Fragment key={c.id}>{render(c.id)}</React.Fragment>)
+        )}
+        {dropHint && dropHint.id === 'root' && dropHint.kind === 'inside' && (
+          <div className="pointer-events-none absolute inset-0 ring-2 ring-blue-400/60 rounded-sm"></div>
         )}
       </div>
     </div>
