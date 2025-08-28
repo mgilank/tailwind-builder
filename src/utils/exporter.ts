@@ -6,7 +6,7 @@ export function renderNode(n: TreeNode): string {
   const cls = n.classes ? ` class="${escapeAttribute(n.classes)}"` : '';
   switch (n.type) {
     case 'text':
-      return `<span${cls}>${escapeHtml(n.props.text ?? '')}</span>`;
+      return `<div${cls}>${escapeHtml(n.props.text ?? '')}</div>`;
     case 'button':
       return `<button${cls}>${escapeHtml(n.props.text ?? 'Button')}</button>`;
     case 'link': {

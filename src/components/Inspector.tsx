@@ -35,6 +35,7 @@ export default function Inspector({ state, setState }: Props) {
   const canText = ['button', 'text', 'link', 'heading'].includes(node.type as any);
   const isHeading = node.type === 'heading';
   const isLink = node.type === 'link';
+  const canTextColor = node.type === 'text' || node.type === 'heading';
 
   return (
     <div className="panel p-3 h-full overflow-auto">
@@ -121,34 +122,35 @@ export default function Inspector({ state, setState }: Props) {
           </div>
 
           <div className="space-y-4 mt-3">
-            {/* Text color group side-by-side */}
-            <div>
-              <label className="block text-xs text-gray-600 mb-1">Text Color</label>
-              <div className="flex items-start gap-3">
-                <ColorPicker
-                  hideLabel
-                  mode="text"
-                  classes={node.classes}
-                  onApply={(newClasses) => setState((s) => updateSelected(s, (n) => { n.classes = newClasses; }))}
-                />
-                <div className="flex items-center gap-2">
-                  <input
-                    id="text-general-colorpicker"
-                    type="color"
-                    className="h-8 w-10 p-0 border rounded cursor-pointer"
-                    value={(currentTextArbitrary(node.classes) || '#000000').replace(/^(?!#)/, '#')}
-                    onChange={(e) => setState((s) => updateSelected(s, (n) => { n.classes = applyTextColorArbitrary(n.classes, e.target.value); }))}
-                    title="Pick any color"
+            {/* Text color group side-by-side (only for Text and Heading) */}
+            {canTextColor && (
+              <div>
+                <label className="block text-xs text-gray-600 mb-1">Text Color</label>
+                <div className="flex items-start gap-3">
+                  <ColorPicker
+                    hideLabel
+                    mode="text"
+                    classes={node.classes}
+                    onApply={(newClasses) => setState((s) => updateSelected(s, (n) => { n.classes = newClasses; }))}
                   />
-                  
+                  <div className="flex items-center gap-2">
+                    <input
+                      id="text-general-colorpicker"
+                      type="color"
+                      className="h-8 w-10 p-0 border rounded cursor-pointer"
+                      value={(currentTextArbitrary(node.classes) || '#000000').replace(/^(?!#)/, '#')}
+                      onChange={(e) => setState((s) => updateSelected(s, (n) => { n.classes = applyTextColorArbitrary(n.classes, e.target.value); }))}
+                      title="Pick any color"
+                    />
+                  </div>
                 </div>
+                <button
+                      type="button"
+                      className="px-2 py-1 text-xs border rounded"
+                      onClick={() => setState((s) => updateSelected(s, (n) => { n.classes = applyTextColor(n.classes, undefined, undefined); }))}
+                    >reset color</button>
               </div>
-              <button
-                    type="button"
-                    className="px-2 py-1 text-xs border rounded"
-                    onClick={() => setState((s) => updateSelected(s, (n) => { n.classes = applyTextColor(n.classes, undefined, undefined); }))}
-                  >reset color</button>
-            </div>
+            )}
             {/* Background color group side-by-side */}
             <div>
               <label className="block text-xs text-gray-600 mb-1">Background</label>

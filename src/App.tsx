@@ -90,14 +90,14 @@ export default function App() {
         </div>
       </header>
 
-      <main className="grid grid-cols-[260px,1fr,300px] gap-3 p-3 overflow-hidden">
+      <main className="grid grid-cols-[260px,minmax(0,1fr),300px] gap-3 p-3 overflow-hidden">
         <Palette />
         <Canvas state={state} setState={setState} />
         <Inspector state={state} setState={setState} />
       </main>
 
-      <footer className="bg-white border-t px-4 py-2">
-        <div className="text-xs text-gray-500 truncate">{finalHtml}</div>
+      <footer className="bg-white border-t px-4 py-2 overflow-x-hidden">
+     <span className='text-xs text-gray-600'> built with 😍</span>
       </footer>
     </div>
   );

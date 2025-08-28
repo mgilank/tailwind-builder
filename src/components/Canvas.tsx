@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { addNode, addNodeToParent, BuilderState, canHaveChildren, findNode, findParentAndIndex, moveNodeAsChild, moveNodeRelative, removeNode } from '../state/model';
+import { addNode, addNodeToParent, BuilderState, canHaveChildren, findNode, findParentAndIndex, insertNodeRelative, moveNodeAsChild, moveNodeRelative, removeNode } from '../state/model';
 import { currentBgArbitrary, currentTextArbitrary } from '../utils/classes';
 
 interface Props {
@@ -10,6 +10,8 @@ interface Props {
 export default function Canvas({ state, setState }: Props) {
   const [dropHint, setDropHint] = useState<null | { id: string; kind: 'inside' | 'before' | 'after' }>(null);
   const [dragMeta, setDragMeta] = useState<null | { mode: 'move' | 'add'; type?: string; id?: string }>(null);
+  // Track which section is hovered on empty space only (not when hovering a child)
+  const [sectionHoverEmpty, setSectionHoverEmpty] = useState<string | null>(null);
   const onDrop: React.DragEventHandler<HTMLDivElement> = (e) => {
     e.preventDefault();
     const type = e.dataTransfer.getData('application/x-node-type');
@@ -50,11 +52,28 @@ export default function Canvas({ state, setState }: Props) {
     const n = findNode(state.root, id)!;
     const selected = state.selectedId === id;
     const base = selected ? 'ring-2 ring-blue-500' : 'ring-1 ring-transparent';
-    // Builder-only visual helpers: subtle border, rounded
-    // Add `group` to enable hover-reveal controls on children
-    // Remove flex centering so content aligns left by default
-    const builderVisual = 'relative group border border-gray-200 rounded-sm hover:border-gray-300 min-h-[48px] text-left';
-    const cls = `${n.classes} ${builderVisual} ${base}`.trim();
+    // Builder-only visual helpers
+    // - Non-text/heading: subtle dashed border, emerald on hover
+    // - Text/heading: no border; emerald ring on hover (no layout shift)
+    const builderVisual = ((): string => {
+      if (n.type === 'text' || n.type === 'heading') {
+        // No visible border by default; show emerald-300 border on hover
+        return 'relative group rounded-sm min-h-[48px] text-left box-border max-w-full border border-transparent hover:border-emerald-300';
+      }
+      if (n.type === 'section') {
+        // Section: baseline dashed, but hover color is controlled via empty-space logic
+        return 'relative group border border-dashed rounded-sm min-h-[48px] text-left box-border max-w-full';
+      }
+      // Div and other components: dashed baseline with emerald hover
+      return 'relative group border border-dashed border-gray-200 hover:border-emerald-300 rounded-sm min-h-[48px] text-left box-border max-w-full';
+    })();
+    const extraColor = ((): string => {
+      if (n.type === 'section') {
+        return sectionHoverEmpty === id ? 'border-emerald-300' : 'border-gray-200';
+      }
+      return '';
+    })();
+    const cls = `${n.classes} ${builderVisual} ${extraColor} ${base}`.trim();
     const arbText = currentTextArbitrary(n.classes);
     const arbBg = currentBgArbitrary(n.classes);
     const inlineStyle: React.CSSProperties = {};
@@ -102,9 +121,8 @@ export default function Canvas({ state, setState }: Props) {
             setDropHint({ id: nearestContainerId, kind: 'inside' });
             e.stopPropagation();
           } else if (n.type === 'section' && t === 'section') {
-            const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
-            const before = e.clientY < rect.top + rect.height / 2;
-            setDropHint({ id, kind: before ? 'before' : 'after' });
+            // Always suggest dropping after (to bottom of targeted section)
+            setDropHint({ id, kind: 'after' });
             e.stopPropagation();
           } else {
             const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
@@ -157,13 +175,8 @@ export default function Canvas({ state, setState }: Props) {
             // Drop into the closest container parent
             setState((s) => addNodeToParent(s, nearestContainerId, type as any));
           } else if (n.type === 'section' && type === 'section') {
-            const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
-            const before = e.clientY < rect.top + rect.height / 2;
-            // Insert section before/after section
-            const currentId = id;
-            if (movingId) {
-              // no-op: handled by moving branch
-            }
+            // Insert a new section after the targeted section (to its bottom)
+            setState((s) => insertNodeRelative(s, id, 'section', 'after'));
           }
           setDropHint(null);
           return;
@@ -245,10 +258,10 @@ export default function Canvas({ state, setState }: Props) {
     );
     switch (n.type) {
       case 'text':
-        return <span {...common} {...droppable}>
-          <span className="pointer-events-none absolute inset-0 flex items-center justify-center text-[10px] uppercase tracking-wide text-gray-500">{n.type}</span>
+        return <div {...common} {...droppable}>
+          {n.props.text ?? 'this is a text, edit at properties'}
           {renderHandle}
-        </span>;
+        </div>;
       case 'button':
         return <button {...common} {...droppable}>
           <span className="pointer-events-none absolute inset-0 flex items-center justify-center text-[10px] uppercase tracking-wide text-gray-500">{n.type}</span>
@@ -262,7 +275,20 @@ export default function Canvas({ state, setState }: Props) {
       case 'heading': {
         const level = n.props.level ?? 1;
         const Tag = (`h${level}`) as any;
-        return <Tag {...common} {...droppable}>
+        const sectionHoverHandlers = {
+          onMouseMove: (e: React.MouseEvent) => {
+            // Only consider empty hover if the event target is the section itself
+            if (e.currentTarget === e.target) {
+              setSectionHoverEmpty(id);
+            } else if (sectionHoverEmpty === id) {
+              setSectionHoverEmpty(null);
+            }
+          },
+          onMouseLeave: () => {
+            if (sectionHoverEmpty === id) setSectionHoverEmpty(null);
+          },
+        } as any;
+        return <Tag {...common} {...droppable} {...(n.type === 'section' ? sectionHoverHandlers : {})}>
           {n.props.text ?? `H${level}`}
           {renderHandle}
         </Tag>;
@@ -279,7 +305,7 @@ export default function Canvas({ state, setState }: Props) {
           )}
           {renderHandle}
           {dropHint && dropHint.id === id && dropHint.kind !== 'inside' && (
-            <div className={`pointer-events-none absolute left-[-4px] right-[-4px] h-[2px] bg-blue-500 ${dropHint.kind === 'before' ? 'top-0' : 'bottom-0'}`}></div>
+            <div className={`pointer-events-none absolute left-0 right-0 h-[2px] bg-blue-500 ${dropHint.kind === 'before' ? 'top-0' : 'bottom-0'}`}></div>
           )}
           {dropHint && dropHint.id === id && dropHint.kind === 'inside' && (
             <div className="pointer-events-none absolute inset-0 ring-2 ring-blue-400/60 rounded-sm"></div>
@@ -294,11 +320,11 @@ export default function Canvas({ state, setState }: Props) {
   };
 
   return (
-    <div className="panel p-4 h-full overflow-auto" onDrop={onDrop} onDragOver={onDragOver} onClick={() => select('root')}>
+    <div className="panel p-4 h-full overflow-auto min-w-0" onDrop={onDrop} onDragOver={onDragOver} onClick={() => select('root')}>
       <div className="text-xs text-gray-500 mb-2">Drop components here</div>
       <div
         data-testid="canvas-root"
-        className="relative min-h-[60vh] bg-white border border-gray-300 rounded"
+        className="relative w-full min-w-0 max-w-full overflow-x-hidden box-border min-h-[60vh] bg-white border border-gray-300 rounded"
         onDragLeave={clearRootHintOnLeave}
       >
         {state.root.children.length === 0 ? (

@@ -105,6 +105,8 @@ export const addNode = (s: BuilderState, type: NodeType) => {
         ? 'inline-block min-w-[80px]'
         : type === 'heading'
         ? 'inline-block text-[32px]'
+        : type === 'text'
+        ? 'text-[15px] font-normal leading-[24px]'
         : '',
     props: defaultProps(type),
     children: [],
@@ -136,11 +138,43 @@ export const addNodeToParent = (s: BuilderState, parentId: string, type: NodeTyp
         ? 'inline-block min-w-[80px]'
         : (type as NodeType) === 'heading'
         ? 'inline-block text-[32px]'
+        : (type as NodeType) === 'text'
+        ? 'text-[15px] font-normal leading-[24px]'
         : '',
     props: defaultProps(type),
     children: [],
   };
   parent.children.push(node);
+  s.selectedId = node.id;
+};
+
+// Insert a new node as a sibling relative to target (before/after)
+export const insertNodeRelative = (s: BuilderState, targetId: string, type: NodeType, pos: 'before' | 'after') => {
+  const tgtInfo = findParentAndIndex(s.root, targetId);
+  if (!tgtInfo || !tgtInfo.parent) return;
+  // Sections can be arranged as siblings; do not allow inserting a section inside another node via this helper
+  pushHistory(s);
+  const node: TreeNode = {
+    id: genId(),
+    type,
+    classes:
+      type === 'section'
+        ? 'pt-[75px] pb-[75px] px-5 flex flex-col items-start'
+        : type === 'button'
+        ? 'px-4 py-2 bg-blue-600 text-white rounded'
+        : type === 'div'
+        ? 'inline-block min-w-[80px]'
+        : type === 'heading'
+        ? 'inline-block text-[32px]'
+        : type === 'text'
+        ? 'text-[15px] font-normal leading-[24px]'
+        : '',
+    props: defaultProps(type),
+    children: [],
+  };
+  let insertIndex = tgtInfo.index;
+  if (pos === 'after') insertIndex += 1;
+  tgtInfo.parent.children.splice(insertIndex, 0, node);
   s.selectedId = node.id;
 };
 
@@ -208,7 +242,7 @@ export const defaultProps = (type: NodeType): NodeProps => {
     case 'heading':
       return { text: 'HEADING', level: 1 };
     case 'text':
-      return { text: 'Text' };
+      return { text: 'this is a text, edit at properties' };
     case 'link':
       return { text: 'Link', href: '#', target: '_self' };
     default:
