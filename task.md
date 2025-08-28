@@ -3,6 +3,12 @@
 - ✅ make the default size of text component font are 15px, font weight 400, line height 24px
 - ✅ remove border for component heading and text, apply border only when hover
 - ✅ use emerald-300 for hover and apply to full border on all components (text/heading show border only on hover)
-
 - ✅ hover color (with emerald-300) on section only active when user hover at empty space with no component. disable hover color when user hover on component inside section
+- ✅ improve. the default min height of div component are 80px
+- ✅ improve. the drag drop function of component inside canvas can be drag without it must be click on icon dotted drag (with title Drag to Move)
+- ✅ fix. components inside containers can be dragged outside (before/after parent)
+- ✅ fix. allow adding non-section components into sections again
+- ✅ fix. dragging heading out of a div no longer drags the div
+- ✅ remove min-height from text component in canvas visuals
 
+- ✅ improve heading and text component. make the text editable using doble click mouse.

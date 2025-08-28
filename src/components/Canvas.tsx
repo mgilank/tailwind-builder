@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { addNode, addNodeToParent, BuilderState, canHaveChildren, findNode, findParentAndIndex, insertNodeRelative, moveNodeAsChild, moveNodeRelative, removeNode } from '../state/model';
+import { addNode, addNodeToParent, BuilderState, canHaveChildren, findNode, findParentAndIndex, insertNodeRelative, moveNodeAsChild, moveNodeRelative, removeNode, updateSelected } from '../state/model';
 import { currentBgArbitrary, currentTextArbitrary } from '../utils/classes';
 
 interface Props {
@@ -12,6 +12,8 @@ export default function Canvas({ state, setState }: Props) {
   const [dragMeta, setDragMeta] = useState<null | { mode: 'move' | 'add'; type?: string; id?: string }>(null);
   // Track which section is hovered on empty space only (not when hovering a child)
   const [sectionHoverEmpty, setSectionHoverEmpty] = useState<string | null>(null);
+  // Inline editor state for text/heading
+  const [editing, setEditing] = useState<null | { id: string; value: string }>(null);
   const onDrop: React.DragEventHandler<HTMLDivElement> = (e) => {
     e.preventDefault();
     const type = e.dataTransfer.getData('application/x-node-type');
@@ -56,15 +58,23 @@ export default function Canvas({ state, setState }: Props) {
     // - Non-text/heading: subtle dashed border, emerald on hover
     // - Text/heading: no border; emerald ring on hover (no layout shift)
     const builderVisual = ((): string => {
-      if (n.type === 'text' || n.type === 'heading') {
-        // No visible border by default; show emerald-300 border on hover
+      if (n.type === 'text') {
+        // Text: no min-height per spec; show emerald border on hover only
+        return 'relative group rounded-sm text-left box-border max-w-full border border-transparent hover:border-emerald-300';
+      }
+      if (n.type === 'heading') {
+        // Heading: keep small min-height to make it grabbable
         return 'relative group rounded-sm min-h-[48px] text-left box-border max-w-full border border-transparent hover:border-emerald-300';
       }
       if (n.type === 'section') {
         // Section: baseline dashed, but hover color is controlled via empty-space logic
-        return 'relative group border border-dashed rounded-sm min-h-[48px] text-left box-border max-w-full';
+        return 'relative group border border-dashed border-gray-300 rounded-sm min-h-[48px] text-left box-border max-w-full';
       }
-      // Div and other components: dashed baseline with emerald hover
+      if (n.type === 'div') {
+        // Div: larger default min height per spec
+        return 'relative group border border-dashed border-gray-300 hover:border-emerald-300 rounded-sm min-h-[80px] text-left box-border max-w-full';
+      }
+      // Other components: dashed baseline with emerald hover
       return 'relative group border border-dashed border-gray-200 hover:border-emerald-300 rounded-sm min-h-[48px] text-left box-border max-w-full';
     })();
     const extraColor = ((): string => {
@@ -79,12 +89,16 @@ export default function Canvas({ state, setState }: Props) {
     const inlineStyle: React.CSSProperties = {};
     if (arbText) inlineStyle.color = arbText;
     if (arbBg) inlineStyle.backgroundColor = arbBg;
+    const isEditing = editing?.id === id;
     const common = {
       'data-id': id,
       className: cls,
       style: inlineStyle,
-      draggable: true,
+      draggable: !isEditing,
       onDragStart: (e: React.DragEvent) => {
+        // Prevent parent draggable handlers from overriding the payload
+        e.stopPropagation();
+        if (isEditing) return;
         e.dataTransfer.setData('application/x-move-node', id);
         // Also set text/plain for better browser compatibility (e.g., Safari)
         e.dataTransfer.setData('text/plain', id);
@@ -108,58 +122,57 @@ export default function Canvas({ state, setState }: Props) {
     const droppable: any = {
       onDragOver: (e: React.DragEvent) => {
         const types = e.dataTransfer.types;
+        const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+        const threshold = Math.min(16, rect.height / 4);
         // Adding new component
         if (types.includes('application/x-node-type')) {
           e.preventDefault();
           e.dataTransfer.dropEffect = 'copy';
           const t = e.dataTransfer.getData('application/x-node-type');
-          if (canDropHere && t !== 'section') {
+          if (t === 'section') {
+            // Allow arranging sections relative to sections; otherwise ignore
+            if (n.type === 'section') {
+              const before = e.clientY < rect.top + rect.height / 2;
+              setDropHint({ id, kind: before ? 'before' : 'after' });
+              e.stopPropagation();
+            }
+            return;
+          }
+          if (canDropHere) {
+            if (e.clientY < rect.top + threshold) { setDropHint({ id, kind: 'before' }); e.stopPropagation(); return; }
+            if (e.clientY > rect.bottom - threshold) { setDropHint({ id, kind: 'after' }); e.stopPropagation(); return; }
             setDropHint({ id, kind: 'inside' });
             e.stopPropagation();
-          } else if (!canDropHere && t !== 'section') {
-            // Delegate to closest parent container for inside preview
-            setDropHint({ id: nearestContainerId, kind: 'inside' });
-            e.stopPropagation();
-          } else if (n.type === 'section' && t === 'section') {
-            // Always suggest dropping after (to bottom of targeted section)
-            setDropHint({ id, kind: 'after' });
-            e.stopPropagation();
-          } else {
-            const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
-            const before = e.clientY < rect.top + rect.height / 2;
-            setDropHint({ id, kind: before ? 'before' : 'after' });
-            e.stopPropagation();
+            return;
           }
+          // Not a container: suggest before/after relative to this node,
+          // but allow event to bubble so parent containers can set their own hints
+          const before = e.clientY < rect.top + rect.height / 2;
+          setDropHint({ id, kind: before ? 'before' : 'after' });
           return;
         }
-        // Moving existing node — don't rely on reading payload here; Chrome may hide it
+        // Moving existing node — don't rely on reading payload contents
         if (types.includes('text/plain') || types.includes('application/x-move-node')) {
           e.preventDefault();
           e.dataTransfer.dropEffect = 'move';
-          if (!canDropHere) {
-            // Show inside preview on nearest container parent
-            setDropHint({ id: nearestContainerId, kind: 'inside' });
-            e.stopPropagation();
-          } else if (n.type === 'section') {
-            // If moving a non-section over a section, preview inside the section
-            if (dragMeta && dragMeta.mode === 'move' && dragMeta.type !== 'section') {
-              setDropHint({ id, kind: 'inside' });
+          if (dragMeta?.type === 'section') {
+            // Sections can only be moved before/after other sections
+            if (n.type === 'section') {
+              const before = e.clientY < rect.top + rect.height / 2;
+              setDropHint({ id, kind: before ? 'before' : 'after' });
               e.stopPropagation();
-              return;
             }
-            const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
-            const before = e.clientY < rect.top + rect.height / 2;
-            setDropHint({ id, kind: before ? 'before' : 'after' });
-            e.stopPropagation();
-          } else if (canDropHere) {
+            return;
+          }
+          if (canDropHere) {
+            if (e.clientY < rect.top + threshold) { setDropHint({ id, kind: 'before' }); e.stopPropagation(); return; }
+            if (e.clientY > rect.bottom - threshold) { setDropHint({ id, kind: 'after' }); e.stopPropagation(); return; }
             setDropHint({ id, kind: 'inside' });
             e.stopPropagation();
-          } else {
-            const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
-            const before = e.clientY < rect.top + rect.height / 2;
-            setDropHint({ id, kind: before ? 'before' : 'after' });
-            e.stopPropagation();
+            return;
           }
+          const before = e.clientY < rect.top + rect.height / 2;
+          setDropHint({ id, kind: before ? 'before' : 'after' });
           return;
         }
       },
@@ -168,15 +181,31 @@ export default function Canvas({ state, setState }: Props) {
         e.stopPropagation();
         const type = e.dataTransfer.getData('application/x-node-type');
         const movingId = e.dataTransfer.getData('application/x-move-node') || e.dataTransfer.getData('text/plain');
+        const hint = dropHint;
         if (type) {
+          if (hint) {
+            if (type === 'section') {
+              // Only allow inserting sections relative to sections
+              const target = findNode(state.root, hint.id);
+              if (target?.type === 'section' && (hint.kind === 'before' || hint.kind === 'after')) {
+                setState((s) => insertNodeRelative(s, hint.id, 'section', hint.kind));
+              }
+            } else {
+              if (hint.kind === 'inside') {
+                setState((s) => addNodeToParent(s, hint.id, type as any));
+              } else {
+                // Insert as sibling relative to target
+                setState((s) => insertNodeRelative(s, hint.id, type as any, hint.kind));
+              }
+            }
+            setDropHint(null);
+            return;
+          }
+          // Fallback to legacy behavior
           if (canDropHere && type !== 'section') {
             setState((s) => addNodeToParent(s, id, type as any));
           } else if (!canDropHere && type !== 'section') {
-            // Drop into the closest container parent
             setState((s) => addNodeToParent(s, nearestContainerId, type as any));
-          } else if (n.type === 'section' && type === 'section') {
-            // Insert a new section after the targeted section (to its bottom)
-            setState((s) => insertNodeRelative(s, id, 'section', 'after'));
           }
           setDropHint(null);
           return;
@@ -184,6 +213,24 @@ export default function Canvas({ state, setState }: Props) {
         if (movingId) {
           const moving = findNode(state.root, movingId);
           if (!moving) return;
+          if (hint) {
+            if (moving.type === 'section') {
+              // Only move sections relative to sections
+              const target = findNode(state.root, hint.id);
+              if (target?.type === 'section' && (hint.kind === 'before' || hint.kind === 'after')) {
+                setState((s) => moveNodeRelative(s, movingId, hint.id, hint.kind));
+              }
+            } else {
+              if (hint.kind === 'inside') {
+                setState((s) => moveNodeAsChild(s, movingId, hint.id));
+              } else {
+                setState((s) => moveNodeRelative(s, movingId, hint.id, hint.kind));
+              }
+            }
+            setDropHint(null);
+            return;
+          }
+          // Fallbacks if no hint
           if (n.type === 'section' && moving.type === 'section') {
             const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
             const before = e.clientY < rect.top + rect.height / 2;
@@ -197,7 +244,6 @@ export default function Canvas({ state, setState }: Props) {
             return;
           }
           if (!canDropHere && moving.type !== 'section') {
-            // Move as child into the closest container parent
             setState((s) => moveNodeAsChild(s, movingId, nearestContainerId));
             setDropHint(null);
             return;
@@ -229,7 +275,7 @@ export default function Canvas({ state, setState }: Props) {
             : 'opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto')
         }
       >
-        <span
+        {/* <span
           className="w-5 h-5 flex items-center justify-center text-gray-400 hover:text-gray-600 cursor-grab bg-white/70 rounded"
           draggable
           onMouseDown={(e) => { e.stopPropagation(); select(id); }}
@@ -241,10 +287,10 @@ export default function Canvas({ state, setState }: Props) {
             setDragMeta({ mode: 'move', id, type: n.type });
           }}
           onDragEnd={() => { setDropHint(null); setDragMeta(null); }}
-          title="Drag to move"
+          title="Drag to move" id='dragToMove'
         >
           ⠿
-        </span>
+        </span> */}
         {id !== 'root' && (
           <button
             className="w-5 h-5 flex items-center justify-center text-gray-400 hover:text-red-600 bg-white/70 rounded"
@@ -257,11 +303,45 @@ export default function Canvas({ state, setState }: Props) {
       </div>
     );
     switch (n.type) {
-      case 'text':
+      case 'text': {
+        const startEdit = (e: React.MouseEvent) => {
+          e.preventDefault();
+          e.stopPropagation();
+          select(id);
+          setEditing({ id, value: n.props.text ?? '' });
+        };
+        const commit = (val: string) => {
+          setState((s) => updateSelected(s, (node) => { if ((node as any).id === id) node.props.text = val; }));
+          setEditing(null);
+        };
+        const onKeyDown: React.KeyboardEventHandler<HTMLInputElement> = (e) => {
+          if (e.key === 'Enter') {
+            e.preventDefault();
+            commit(editing?.value ?? '');
+          } else if (e.key === 'Escape') {
+            e.preventDefault();
+            setEditing(null);
+          }
+        };
+        const isEditing = editing?.id === id;
         return <div {...common} {...droppable}>
-          {n.props.text ?? 'this is a text, edit at properties'}
+          {isEditing ? (
+            <input
+              className="w-full bg-transparent outline-none"
+              autoFocus
+              value={editing!.value}
+              onChange={(e) => setEditing({ id, value: e.target.value })}
+              onBlur={() => commit(editing!.value)}
+              onKeyDown={onKeyDown}
+              onClick={(e) => e.stopPropagation()}
+              onMouseDown={(e) => e.stopPropagation()}
+            />
+          ) : (
+            <div onDoubleClick={startEdit}>{n.props.text ?? 'this is a text, edit at properties'}</div>
+          )}
           {renderHandle}
         </div>;
+      }
       case 'button':
         return <button {...common} {...droppable}>
           <span className="pointer-events-none absolute inset-0 flex items-center justify-center text-[10px] uppercase tracking-wide text-gray-500">{n.type}</span>
@@ -288,8 +368,41 @@ export default function Canvas({ state, setState }: Props) {
             if (sectionHoverEmpty === id) setSectionHoverEmpty(null);
           },
         } as any;
+        const startEdit = (e: React.MouseEvent) => {
+          e.preventDefault();
+          e.stopPropagation();
+          select(id);
+          setEditing({ id, value: n.props.text ?? `H${level}` });
+        };
+        const commit = (val: string) => {
+          setState((s) => updateSelected(s, (node) => { if ((node as any).id === id) node.props.text = val; }));
+          setEditing(null);
+        };
+        const onKeyDown: React.KeyboardEventHandler<HTMLInputElement> = (e) => {
+          if (e.key === 'Enter') {
+            e.preventDefault();
+            commit(editing?.value ?? '');
+          } else if (e.key === 'Escape') {
+            e.preventDefault();
+            setEditing(null);
+          }
+        };
+        const isEditing = editing?.id === id;
         return <Tag {...common} {...droppable} {...(n.type === 'section' ? sectionHoverHandlers : {})}>
-          {n.props.text ?? `H${level}`}
+          {isEditing ? (
+            <input
+              className="w-full bg-transparent outline-none"
+              autoFocus
+              value={editing!.value}
+              onChange={(e) => setEditing({ id, value: e.target.value })}
+              onBlur={() => commit(editing!.value)}
+              onKeyDown={onKeyDown}
+              onClick={(e) => e.stopPropagation()}
+              onMouseDown={(e) => e.stopPropagation()}
+            />
+          ) : (
+            <span onDoubleClick={startEdit}>{n.props.text ?? `H${level}`}</span>
+          )}
           {renderHandle}
         </Tag>;
       }
@@ -324,7 +437,7 @@ export default function Canvas({ state, setState }: Props) {
       <div className="text-xs text-gray-500 mb-2">Drop components here</div>
       <div
         data-testid="canvas-root"
-        className="relative w-full min-w-0 max-w-full overflow-x-hidden box-border min-h-[60vh] bg-white border border-gray-300 rounded"
+        className="relative w-full min-w-0 max-w-full overflow-x-hidden box-border min-h-[60vh] bg-white "
         onDragLeave={clearRootHintOnLeave}
       >
         {state.root.children.length === 0 ? (
