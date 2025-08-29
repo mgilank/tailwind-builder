@@ -10,5 +10,6 @@
 - ✅ fix. allow adding non-section components into sections again
 - ✅ fix. dragging heading out of a div no longer drags the div
 - ✅ remove min-height from text component in canvas visuals
-
 - ✅ improve heading and text component. make the text editable using doble click mouse.
+
+- add feature. section have properties : flex vertical, flex horizontal and grid using tailwind class

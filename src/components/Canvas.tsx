@@ -18,16 +18,90 @@ export default function Canvas({ state, setState }: Props) {
     e.preventDefault();
     const type = e.dataTransfer.getData('application/x-node-type');
     const movingId = e.dataTransfer.getData('application/x-move-node') || e.dataTransfer.getData('text/plain');
+    const hint = dropHint;
+    // Helper: find nearest section DOM ancestor from the event target
+    const nearestSectionFromEvent = (): string | null => {
+      let el = e.target as HTMLElement | null;
+      while (el) {
+        const idAttr = el.getAttribute && el.getAttribute('data-id');
+        if (idAttr) {
+          const node = findNode(state.root, idAttr);
+          if (node?.type === 'section') return idAttr;
+        }
+        el = el.parentElement;
+      }
+      return null;
+    };
     if (type) {
-      setState((s) => addNode(s, type as any));
+      // Enforce: new sections always go after the section under cursor
+      if (type === 'section') {
+        const sec = nearestSectionFromEvent();
+        if (sec) {
+          setState((s) => insertNodeRelative(s, sec, 'section', 'after'));
+          setDropHint(null);
+          setDragMeta(null);
+          return;
+        }
+      }
+      if (hint) {
+        if (type === 'section') {
+          // Sections: only allow before/after another section; never inside
+          const target = findNode(state.root, hint.id);
+          if (target?.type === 'section' && (hint.kind === 'before' || hint.kind === 'after')) {
+            setState((s) => insertNodeRelative(s, hint.id, 'section', hint.kind));
+          } else {
+            // Fallback: append to root
+            setState((s) => addNode(s, 'section'));
+          }
+        } else {
+          if (hint.kind === 'inside') {
+            setState((s) => addNodeToParent(s, hint.id, type as any));
+          } else {
+            setState((s) => insertNodeRelative(s, hint.id, type as any, hint.kind));
+          }
+        }
+      } else {
+        // No hint: append to root
+        setState((s) => addNode(s, type as any));
+      }
       setDropHint(null);
       setDragMeta(null);
       return;
     }
     if (movingId) {
       const moving = findNode(state.root, movingId);
-      if (moving && moving.type !== 'section') {
-        setState((s) => moveNodeAsChild(s, movingId, 'root'));
+      if (moving) {
+        // Enforce: moving sections always go after the section under cursor
+        if (moving.type === 'section') {
+          const sec = nearestSectionFromEvent();
+          if (sec && sec !== movingId) {
+            setState((s) => moveNodeRelative(s, movingId, sec, 'after'));
+            setDropHint(null);
+            setDragMeta(null);
+            return;
+          }
+        }
+        if (hint) {
+          if (moving.type === 'section') {
+            const target = findNode(state.root, hint.id);
+            if (target?.type === 'section' && (hint.kind === 'before' || hint.kind === 'after')) {
+              setState((s) => moveNodeRelative(s, movingId, hint.id, hint.kind));
+            }
+          } else {
+            if (hint.kind === 'inside') {
+              setState((s) => moveNodeAsChild(s, movingId, hint.id));
+            } else {
+              setState((s) => moveNodeRelative(s, movingId, hint.id, hint.kind));
+            }
+          }
+          setDropHint(null);
+          setDragMeta(null);
+          return;
+        }
+        // No hint fallbacks
+        if (moving.type !== 'section') {
+          setState((s) => moveNodeAsChild(s, movingId, 'root'));
+        }
       }
     }
     setDragMeta(null);
@@ -119,6 +193,16 @@ export default function Canvas({ state, setState }: Props) {
       }
       return curParent && canHaveChildren(curParent.type) ? curParent.id : 'root';
     })();
+    // Find the closest ancestor section for this node (including self)
+    const nearestSectionId = (() => {
+      let cur: any = findNode(state.root, id);
+      while (cur) {
+        if (cur.type === 'section') return cur.id as string;
+        const up = findParentAndIndex(state.root, cur.id)?.parent;
+        cur = up;
+      }
+      return null as string | null;
+    })();
     const droppable: any = {
       onDragOver: (e: React.DragEvent) => {
         const types = e.dataTransfer.types;
@@ -130,12 +214,13 @@ export default function Canvas({ state, setState }: Props) {
           e.dataTransfer.dropEffect = 'copy';
           const t = e.dataTransfer.getData('application/x-node-type');
           if (t === 'section') {
-            // Allow arranging sections relative to sections; otherwise ignore
-            if (n.type === 'section') {
-              const before = e.clientY < rect.top + rect.height / 2;
-              setDropHint({ id, kind: before ? 'before' : 'after' });
+            // New sections should always be added below the nearest section ancestor
+            if (nearestSectionId) {
+              setDropHint({ id: nearestSectionId, kind: 'after' });
               e.stopPropagation();
+              return;
             }
+            // If no section ancestor, let root handle (append to root)
             return;
           }
           if (canDropHere) {
@@ -182,7 +267,27 @@ export default function Canvas({ state, setState }: Props) {
         const type = e.dataTransfer.getData('application/x-node-type');
         const movingId = e.dataTransfer.getData('application/x-move-node') || e.dataTransfer.getData('text/plain');
         const hint = dropHint;
+        const nearestSectionFromEvent = (): string | null => {
+          let el = e.target as HTMLElement | null;
+          while (el) {
+            const idAttr = el.getAttribute && el.getAttribute('data-id');
+            if (idAttr) {
+              const node = findNode(state.root, idAttr);
+              if (node?.type === 'section') return idAttr;
+            }
+            el = el.parentElement;
+          }
+          return null;
+        };
         if (type) {
+          if (type === 'section') {
+            const sec = nearestSectionFromEvent();
+            if (sec) {
+              setState((s) => insertNodeRelative(s, sec, 'section', 'after'));
+              setDropHint(null);
+              return;
+            }
+          }
           if (hint) {
             if (type === 'section') {
               // Only allow inserting sections relative to sections
@@ -213,6 +318,14 @@ export default function Canvas({ state, setState }: Props) {
         if (movingId) {
           const moving = findNode(state.root, movingId);
           if (!moving) return;
+          if (moving.type === 'section') {
+            const sec = nearestSectionFromEvent();
+            if (sec && sec !== movingId) {
+              setState((s) => moveNodeRelative(s, movingId, sec, 'after'));
+              setDropHint(null);
+              return;
+            }
+          }
           if (hint) {
             if (moving.type === 'section') {
               // Only move sections relative to sections
@@ -275,7 +388,7 @@ export default function Canvas({ state, setState }: Props) {
             : 'opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto')
         }
       >
-        {/* <span
+        <span
           className="w-5 h-5 flex items-center justify-center text-gray-400 hover:text-gray-600 cursor-grab bg-white/70 rounded"
           draggable
           onMouseDown={(e) => { e.stopPropagation(); select(id); }}
@@ -290,7 +403,7 @@ export default function Canvas({ state, setState }: Props) {
           title="Drag to move" id='dragToMove'
         >
           ⠿
-        </span> */}
+        </span>
         {id !== 'root' && (
           <button
             className="w-5 h-5 flex items-center justify-center text-gray-400 hover:text-red-600 bg-white/70 rounded"
