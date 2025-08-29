@@ -1,4 +1,5 @@
 import type { TreeNode } from '../state/model';
+import { currentFlexDirection } from './classes';
 
 const escapeHtml = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
@@ -18,6 +19,13 @@ export function renderNode(n: TreeNode): string {
       const level = n.props.level ?? 1;
       const tag = `h${level}`;
       return `<${tag}${cls}>${escapeHtml(n.props.text ?? tag.toUpperCase())}</${tag}>`;
+    }
+    case 'section': {
+      const children = n.children.map(renderNode).join('');
+      const dir = currentFlexDirection(n.classes);
+      const dirCls = dir === 'row' ? 'flex-row' : dir === 'row-reverse' ? 'flex-row-reverse' : dir === 'col-reverse' ? 'flex-col-reverse' : 'flex-col';
+      const inner = `<div class="section-inner flex ${dirCls} items-start">${children}</div>`;
+      return `<section${cls}>${inner}</section>`;
     }
     default: {
       const tag = n.type;

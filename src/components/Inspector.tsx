@@ -13,6 +13,7 @@ import {
   applyTextColor,
   applyBgColor,
 } from '../utils/classes';
+import { applyFlexDirection, currentFlexDirection, FlexDirection } from '../utils/classes';
 import ColorPicker from './ColorPicker';
 
 interface Props {
@@ -36,6 +37,7 @@ export default function Inspector({ state, setState }: Props) {
   const isHeading = node.type === 'heading';
   const isLink = node.type === 'link';
   const canTextColor = node.type === 'text' || node.type === 'heading';
+  const isSection = node.type === 'section';
 
   return (
     <div className="panel p-3 h-full overflow-auto">
@@ -93,6 +95,33 @@ export default function Inspector({ state, setState }: Props) {
               </select>
             </div>
           </>
+        )}
+
+        {isSection && (
+          <div>
+            <label className="block text-xs text-gray-600 mb-1">Flex Direction</label>
+            <div className="flex items-center gap-2">
+              {([
+                { dir: 'col', label: '↕︎', title: 'flex-col' },
+                { dir: 'row', label: '↔︎', title: 'flex-row' },
+                { dir: 'col-reverse', label: '⇅', title: 'flex-col-reverse' },
+                { dir: 'row-reverse', label: '⇄', title: 'flex-row-reverse' },
+              ] as { dir: FlexDirection; label: string; title: string }[]).map(({ dir, label, title }) => {
+                const active = currentFlexDirection(node.classes) === dir;
+                return (
+                  <button
+                    key={dir}
+                    type="button"
+                    className={`w-8 h-8 text-sm border rounded flex items-center justify-center ${active ? 'bg-gray-200 border-gray-400' : 'bg-white hover:bg-gray-100'}`}
+                    title={title}
+                    onClick={() => setState((s) => updateSelected(s, (n) => { n.classes = applyFlexDirection(n.classes, dir); }))}
+                  >
+                    {label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
         )}
 
         {/* Styles */}

@@ -98,7 +98,7 @@ export const addNode = (s: BuilderState, type: NodeType) => {
     type,
     classes:
       type === 'section'
-        ? 'pt-[75px] pb-[75px] px-5 flex flex-col items-start'
+        ? 'pt-[75px] pb-[75px] px-5'
         : type === 'button'
         ? 'px-4 py-2 bg-blue-600 text-white rounded'
         : type === 'div'
@@ -131,7 +131,7 @@ export const addNodeToParent = (s: BuilderState, parentId: string, type: NodeTyp
     type,
     classes:
       (type as NodeType) === 'section'
-        ? 'pt-[75px] pb-[75px] px-5 flex flex-col items-start'
+        ? 'pt-[75px] pb-[75px] px-5'
         : (type as NodeType) === 'button'
         ? 'px-4 py-2 bg-blue-600 text-white rounded'
         : (type as NodeType) === 'div'
@@ -159,7 +159,7 @@ export const insertNodeRelative = (s: BuilderState, targetId: string, type: Node
     type,
     classes:
       type === 'section'
-        ? 'pt-[75px] pb-[75px] px-5 flex flex-col items-start'
+        ? 'pt-[75px] pb-[75px] px-5'
         : type === 'button'
         ? 'px-4 py-2 bg-blue-600 text-white rounded'
         : type === 'div'

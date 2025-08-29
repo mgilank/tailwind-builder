@@ -131,3 +131,19 @@ export function currentBgArbitrary(classes: string): string | '' {
   const m = t.match(arbitraryColorPattern('bg'));
   return (m?.[1] as string) || '';
 }
+
+// Flex direction utilities for sections
+const FLEX_DIR_PATTERNS = [/^flex-(row|row-reverse|col|col-reverse)$/];
+export type FlexDirection = 'row' | 'row-reverse' | 'col' | 'col-reverse';
+
+export function applyFlexDirection(classes: string, dir: FlexDirection): string {
+  const add = `flex-${dir}`;
+  return replaceTokens(classes, FLEX_DIR_PATTERNS, add);
+}
+
+export function currentFlexDirection(classes: string): FlexDirection {
+  const token = tokenize(classes).find((t) => FLEX_DIR_PATTERNS.some((re) => re.test(t)));
+  if (!token) return 'col';
+  const m = token.match(/^flex-(row|row-reverse|col|col-reverse)$/);
+  return (m?.[1] as FlexDirection) || 'col';
+}

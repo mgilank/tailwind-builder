@@ -18,3 +18,15 @@ test('minifyHtml removes whitespace between tags', () => {
   expect(minifyHtml(input)).toBe('<div><span> A </span></div>');
 });
 
+test('section renders with section-inner wrapper', () => {
+  const root = {
+    id: 'root', type: 'div', classes: '', props: {}, children: [
+      { id: 's1', type: 'section', classes: 'pt-[75px] pb-[75px] px-5', props: {}, children: [
+        { id: 'c1', type: 'div', classes: 'p-2', props: {}, children: [] },
+      ] },
+    ]
+  } as any;
+  const html = renderHtml(root);
+  expect(html).toContain('<section class="pt-[75px] pb-[75px] px-5">');
+  expect(html).toContain('<div class="section-inner flex flex-col items-start">');
+});

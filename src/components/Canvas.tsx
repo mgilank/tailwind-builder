@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { addNode, addNodeToParent, BuilderState, canHaveChildren, findNode, findParentAndIndex, insertNodeRelative, moveNodeAsChild, moveNodeRelative, removeNode, updateSelected } from '../state/model';
-import { currentBgArbitrary, currentTextArbitrary } from '../utils/classes';
+import { currentBgArbitrary, currentTextArbitrary, currentFlexDirection } from '../utils/classes';
 
 interface Props {
   state: BuilderState;
@@ -127,7 +127,7 @@ export default function Canvas({ state, setState }: Props) {
   const render = (id: string) => {
     const n = findNode(state.root, id)!;
     const selected = state.selectedId === id;
-    const base = selected ? 'ring-2 ring-blue-500' : 'ring-1 ring-transparent';
+    const base = selected ? 'border-amber-500' : 'ring-1 ring-transparent';
     // Builder-only visual helpers
     // - Non-text/heading: subtle dashed border, emerald on hover
     // - Text/heading: no border; emerald ring on hover (no layout shift)
@@ -521,6 +521,28 @@ export default function Canvas({ state, setState }: Props) {
       }
       default: {
         const Tag = n.type as any;
+        // For section nodes, wrap content with a default inner div
+        if (n.type === 'section') {
+          const dir = currentFlexDirection(n.classes);
+          const dirCls = dir === 'row' ? 'flex-row' : dir === 'row-reverse' ? 'flex-row-reverse' : dir === 'col-reverse' ? 'flex-col-reverse' : 'flex-col';
+          return <Tag {...common} {...droppable}>
+            <div className={`section-inner flex ${dirCls} items-start`}>
+              {n.children.map((c) => (
+                <React.Fragment key={c.id}>{render(c.id)}</React.Fragment>
+              ))}
+            </div>
+            {n.children.length === 0 && (
+              <span className="pointer-events-none absolute inset-0 flex items-center justify-center text-[10px] uppercase tracking-wide text-gray-400">{n.type}</span>
+            )}
+            {renderHandle}
+            {dropHint && dropHint.id === id && dropHint.kind !== 'inside' && (
+              <div className={`pointer-events-none absolute left-0 right-0 h-[2px] bg-blue-500 ${dropHint.kind === 'before' ? 'top-0' : 'bottom-0'}`}></div>
+            )}
+            {dropHint && dropHint.id === id && dropHint.kind === 'inside' && (
+              <div className="pointer-events-none absolute inset-0 ring-2 ring-blue-400/60 rounded-sm"></div>
+            )}
+          </Tag>;
+        }
         return <Tag {...common} {...droppable}>
           {n.children.length === 0 ? (
             <span className="pointer-events-none absolute inset-0 flex items-center justify-center text-[10px] uppercase tracking-wide text-gray-400">{n.type}</span>
