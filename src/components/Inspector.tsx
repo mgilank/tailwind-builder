@@ -13,7 +13,7 @@ import {
   applyTextColor,
   applyBgColor,
 } from '../utils/classes';
-import { applyFlexDirection, currentFlexDirection, FlexDirection } from '../utils/classes';
+import { applyFlexDirection, currentFlexDirection, FlexDirection, applyItemsAlign, currentItemsAlign, AlignItems, applyJustifyContent, currentJustifyContent, JustifyContent } from '../utils/classes';
 import ColorPicker from './ColorPicker';
 
 interface Props {
@@ -98,30 +98,86 @@ export default function Inspector({ state, setState }: Props) {
         )}
 
         {isSection && (
-          <div>
-            <label className="block text-xs text-gray-600 mb-1">Flex Direction</label>
-            <div className="flex items-center gap-2">
-              {([
-                { dir: 'col', label: '↕︎', title: 'flex-col' },
-                { dir: 'row', label: '↔︎', title: 'flex-row' },
-                { dir: 'col-reverse', label: '⇅', title: 'flex-col-reverse' },
-                { dir: 'row-reverse', label: '⇄', title: 'flex-row-reverse' },
-              ] as { dir: FlexDirection; label: string; title: string }[]).map(({ dir, label, title }) => {
-                const active = currentFlexDirection(node.classes) === dir;
-                return (
-                  <button
-                    key={dir}
-                    type="button"
-                    className={`w-8 h-8 text-sm border rounded flex items-center justify-center ${active ? 'bg-gray-200 border-gray-400' : 'bg-white hover:bg-gray-100'}`}
-                    title={title}
-                    onClick={() => setState((s) => updateSelected(s, (n) => { n.classes = applyFlexDirection(n.classes, dir); }))}
-                  >
-                    {label}
-                  </button>
-                );
-              })}
+          <>
+            <div>
+              <label className="block text-xs text-gray-600 mb-1">Flex Direction</label>
+              <div className="flex items-center gap-2">
+                {([
+                  { dir: 'col', label: '↕︎', title: 'flex-col' },
+                  { dir: 'row', label: '↔︎', title: 'flex-row' },
+                  { dir: 'col-reverse', label: '⇅', title: 'flex-col-reverse' },
+                  { dir: 'row-reverse', label: '⇄', title: 'flex-row-reverse' },
+                ] as { dir: FlexDirection; label: string; title: string }[]).map(({ dir, label, title }) => {
+                  const active = currentFlexDirection(node.classes) === dir;
+                  return (
+                    <button
+                      key={dir}
+                      type="button"
+                      className={`w-8 h-8 text-sm border rounded flex items-center justify-center ${active ? 'bg-gray-200 border-gray-400' : 'bg-white hover:bg-gray-100'}`}
+                      title={title}
+                      onClick={() => setState((s) => updateSelected(s, (n) => { n.classes = applyFlexDirection(n.classes, dir); }))}
+                    >
+                      {label}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
-          </div>
+            {/* Justify content (main axis) — shown for flex row directions */}
+            {(currentFlexDirection(node.classes) === 'row' || currentFlexDirection(node.classes) === 'row-reverse') && (
+              <div>
+                <label className="block text-xs text-gray-600 mb-1">Justify Content</label>
+                <div className="flex items-center gap-2">
+                  {([
+                    { justify: 'start', label: '⟵', title: 'justify-start' },
+                    { justify: 'center', label: '↔︎', title: 'justify-center' },
+                    { justify: 'end', label: '⟶', title: 'justify-end' },
+                    { justify: 'between', label: '⋯|⋯', title: 'justify-between' },
+                    { justify: 'around', label: '⋯⋯⋯', title: 'justify-around' },
+                    { justify: 'evenly', label: '⋮⋮⋮', title: 'justify-evenly' },
+                    { justify: 'stretch', label: '⇿', title: 'justify-stretch' },
+                  ] as { justify: JustifyContent; label: string; title: string }[]).map(({ justify, label, title }) => {
+                    const active = currentJustifyContent(node.classes) === justify;
+                    return (
+                      <button
+                        key={justify}
+                        type="button"
+                        className={`w-8 h-8 text-sm border rounded flex items-center justify-center ${active ? 'bg-gray-200 border-gray-400' : 'bg-white hover:bg-gray-100'}`}
+                        title={title}
+                        onClick={() => setState((s) => updateSelected(s, (n) => { n.classes = applyJustifyContent(n.classes, justify); }))}
+                      >
+                        {label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+            <div>
+              <label className="block text-xs text-gray-600 mb-1">Align Items</label>
+              <div className="flex items-center gap-2">
+                {([
+                  { align: 'start', label: '⟸', title: 'items-start' },
+                  { align: 'center', label: '⟺', title: 'items-center' },
+                  { align: 'end', label: '⟹', title: 'items-end' },
+                  { align: 'stretch', label: '⇔', title: 'items-stretch' },
+                ] as { align: AlignItems; label: string; title: string }[]).map(({ align, label, title }) => {
+                  const active = currentItemsAlign(node.classes) === align;
+                  return (
+                    <button
+                      key={align}
+                      type="button"
+                      className={`w-8 h-8 text-sm border rounded flex items-center justify-center ${active ? 'bg-gray-200 border-gray-400' : 'bg-white hover:bg-gray-100'}`}
+                      title={title}
+                      onClick={() => setState((s) => updateSelected(s, (n) => { n.classes = applyItemsAlign(n.classes, align); }))}
+                    >
+                      {label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </>
         )}
 
         {/* Styles */}

@@ -1,5 +1,5 @@
 import type { TreeNode } from '../state/model';
-import { currentFlexDirection } from './classes';
+import { currentFlexDirection, currentItemsAlign, currentJustifyContent } from './classes';
 
 const escapeHtml = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
@@ -24,7 +24,13 @@ export function renderNode(n: TreeNode): string {
       const children = n.children.map(renderNode).join('');
       const dir = currentFlexDirection(n.classes);
       const dirCls = dir === 'row' ? 'flex-row' : dir === 'row-reverse' ? 'flex-row-reverse' : dir === 'col-reverse' ? 'flex-col-reverse' : 'flex-col';
-      const inner = `<div class="section-inner flex ${dirCls} items-start">${children}</div>`;
+      const align = currentItemsAlign(n.classes);
+      const itemsCls = align === 'end' ? 'items-end' : align === 'center' ? 'items-center' : align === 'stretch' ? 'items-stretch' : 'items-start';
+      const justify = currentJustifyContent(n.classes);
+      const justifyCls = (dir === 'row' || dir === 'row-reverse')
+        ? (justify === 'end' ? 'justify-end' : justify === 'center' ? 'justify-center' : justify === 'between' ? 'justify-between' : justify === 'around' ? 'justify-around' : justify === 'evenly' ? 'justify-evenly' : justify === 'stretch' ? 'justify-stretch' : 'justify-start')
+        : '';
+      const inner = `<div class="section-inner flex ${dirCls} ${itemsCls} ${justifyCls}">${children}</div>`;
       return `<section${cls}>${inner}</section>`;
     }
     default: {

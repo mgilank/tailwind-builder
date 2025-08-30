@@ -147,3 +147,35 @@ export function currentFlexDirection(classes: string): FlexDirection {
   const m = token.match(/^flex-(row|row-reverse|col|col-reverse)$/);
   return (m?.[1] as FlexDirection) || 'col';
 }
+
+// Align-items utilities for sections
+const ALIGN_ITEMS_PATTERNS = [/^items-(start|end|center|stretch)$/];
+export type AlignItems = 'start' | 'end' | 'center' | 'stretch';
+
+export function applyItemsAlign(classes: string, align: AlignItems): string {
+  const add = `items-${align}`;
+  return replaceTokens(classes, ALIGN_ITEMS_PATTERNS, add);
+}
+
+export function currentItemsAlign(classes: string): AlignItems {
+  const token = tokenize(classes).find((t) => ALIGN_ITEMS_PATTERNS.some((re) => re.test(t)));
+  if (!token) return 'start';
+  const m = token.match(/^items-(start|end|center|stretch)$/);
+  return (m?.[1] as AlignItems) || 'start';
+}
+
+// Justify-content utilities for sections (main axis)
+const JUSTIFY_CONTENT_PATTERNS = [/^justify-(start|end|center|between|around|evenly|stretch)$/];
+export type JustifyContent = 'start' | 'end' | 'center' | 'between' | 'around' | 'evenly' | 'stretch';
+
+export function applyJustifyContent(classes: string, justify: JustifyContent): string {
+  const add = `justify-${justify}`;
+  return replaceTokens(classes, JUSTIFY_CONTENT_PATTERNS, add);
+}
+
+export function currentJustifyContent(classes: string): JustifyContent {
+  const token = tokenize(classes).find((t) => JUSTIFY_CONTENT_PATTERNS.some((re) => re.test(t)));
+  if (!token) return 'start';
+  const m = token.match(/^justify-(start|end|center|between|around|evenly|stretch)$/);
+  return (m?.[1] as JustifyContent) || 'start';
+}

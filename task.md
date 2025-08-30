@@ -1,1 +1,23 @@
-- add feature for section properties. section properties have button to change flex direction with tailwind style. the default are "flex-direction: column;" make every flex class (tailwind) have its own icon. so user will just click it to apply. 
+[TASK]
+
+
+
+
+[DONE TAKS]
+- ✅ add section properties for justify-content (using tailwind style) for flex row with options: justify-start, justify-end, justify-center, justify-between, justify-around, justify-evenly, justify-stretch
+- ✅ add align item css (using tailwind style) for section properties with : start, end, center, stretch. and each option have icon
+- ✅ when user hover to component, make the border for it. with color emerald-300
+- ✅ wrap text component with div instead of span.
+- ✅ make the default size of text component font are 15px, font weight 400, line height 24px
+- ✅ remove border for component heading and text, apply border only when hover
+- ✅ use emerald-300 for hover and apply to full border on all components (text/heading show border only on hover)
+- ✅ hover color (with emerald-300) on section only active when user hover at empty space with no component. disable hover color when user hover on component inside section
+- ✅ improve. the default min height of div component are 80px
+- ✅ improve. the drag drop function of component inside canvas can be drag without it must be click on icon dotted drag (with title Drag to Move)
+- ✅ fix. components inside containers can be dragged outside (before/after parent)
+- ✅ fix. allow adding non-section components into sections again
+- ✅ fix. dragging heading out of a div no longer drags the div
+- ✅ remove min-height from text component in canvas visuals
+- ✅ improve heading and text component. make the text editable using doble click mouse.
+- ✅ improve. section has default inner div `section-inner` wrapping content, using Tailwind `flex flex-col items-start`.
+- ✅ add section property controls to toggle flex direction via Tailwind classes, with icon buttons (row, col, row-reverse, col-reverse).

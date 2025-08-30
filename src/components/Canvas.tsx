@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { addNode, addNodeToParent, BuilderState, canHaveChildren, findNode, findParentAndIndex, insertNodeRelative, moveNodeAsChild, moveNodeRelative, removeNode, updateSelected } from '../state/model';
-import { currentBgArbitrary, currentTextArbitrary, currentFlexDirection } from '../utils/classes';
+import { currentBgArbitrary, currentTextArbitrary, currentFlexDirection, currentItemsAlign, currentJustifyContent } from '../utils/classes';
 
 interface Props {
   state: BuilderState;
@@ -525,8 +525,14 @@ export default function Canvas({ state, setState }: Props) {
         if (n.type === 'section') {
           const dir = currentFlexDirection(n.classes);
           const dirCls = dir === 'row' ? 'flex-row' : dir === 'row-reverse' ? 'flex-row-reverse' : dir === 'col-reverse' ? 'flex-col-reverse' : 'flex-col';
+          const align = currentItemsAlign(n.classes);
+          const itemsCls = align === 'end' ? 'items-end' : align === 'center' ? 'items-center' : align === 'stretch' ? 'items-stretch' : 'items-start';
+          const justify = currentJustifyContent(n.classes);
+          const justifyCls = dir === 'row' || dir === 'row-reverse'
+            ? (justify === 'end' ? 'justify-end' : justify === 'center' ? 'justify-center' : justify === 'between' ? 'justify-between' : justify === 'around' ? 'justify-around' : justify === 'evenly' ? 'justify-evenly' : justify === 'stretch' ? 'justify-stretch' : 'justify-start')
+            : '';
           return <Tag {...common} {...droppable}>
-            <div className={`section-inner flex ${dirCls} items-start`}>
+            <div className={`section-inner flex ${dirCls} ${itemsCls} ${justifyCls}`}>
               {n.children.map((c) => (
                 <React.Fragment key={c.id}>{render(c.id)}</React.Fragment>
               ))}
